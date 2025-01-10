@@ -19,6 +19,7 @@ logging.basicConfig(
 )
 
 def set_logging_level(verbosity):
+    """Set log level."""
     if verbosity == 1:
         logger.setLevel(logging.WARNING)
     elif verbosity == 2:
@@ -30,7 +31,7 @@ def set_logging_level(verbosity):
 
 def read_in_chunks(file_path, chunk_size):
     """Reads a file in chunks of the specified size."""
-    with open(file_path, 'rb') as file:  # Open in binary mode to handle all file types
+    with open(file_path, 'rb') as file:
         while chunk := file.read(chunk_size):
             yield chunk
 
@@ -39,12 +40,82 @@ def print_progress_bar(iteration, total, elapsed_time, transferred_bytes, length
     percent = f"{100 * (iteration / float(total)):.1f}"
     filled_length = int(length * iteration // total)
     bar = '=' * filled_length + '-' * (length - filled_length)
-    rate = transferred_bytes / (1024 * elapsed_time) if elapsed_time > 0 else 0  # KB/s
+    rate = transferred_bytes / (1024 * elapsed_time) if elapsed_time > 0 else 0
     print(f"\r  Progress: |{bar}| {percent}% Complete | {rate:.2f} KB/s", end="\r")
     if iteration == total:
-        print()  # Move to a new line on completion
+        print()
+
+def check_guest_agent(vmid):
+    """Check if the guest agent is installed and reachable."""
+    try:
+        call = ["qm", "guest", "cmd", vmid, "ping"]
+        if os.getuid() != 0:
+            call = ["sudo"] + call
+        logger.debug(f"Executing command: {' '.join(call)}")
+
+        subprocess.run(
+            call,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+        logger.info("Guest agent is installed and reachable.")
+    except subprocess.CalledProcessError:
+        logger.error("Guest agent is not installed or not responding.")
+        sys.exit(1)
+
+def check_osinfo(vmid):
+    """Verify the VM OS information for compatibility."""
+    try:
+        call = ["qm", "guest", "cmd", vmid, "get-osinfo"]
+        if os.getuid() != 0:
+            call = ["sudo"] + call
+        logger.debug(f"Executing command: {' '.join(call)}")
+
+        process = subprocess.run(
+            call,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+        os_info = json.loads(process.stdout.decode())
+        name = os_info.get("name", "").lower()
+        kernel_version = os_info.get("kernel-version", "").lower()
+
+        if "linux" not in name and "freebsd" not in kernel_version:
+            logger.error(
+                f"Incompatible OS. Found name='{name}', kernel-version='{kernel_version}'."
+            )
+            sys.exit(1)
+
+        logger.info(f"OS check passed: name='{name}', kernel-version='{kernel_version}'.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to get OS info: {e}")
+        sys.exit(1)
+
+def check_required_commands(vmid):
+    """Check if required commands are available on the VM."""
+    required_commands = ["cat", "dd", "stat", "base64"]
+    for cmd in required_commands:
+        try:
+            call = ["qm", "guest", "exec", vmid, "--", "sh", "-c", f"which {cmd}"]
+            if os.getuid() != 0:
+                call = ["sudo"] + call
+            logger.debug(f"Executing command: {' '.join(call)}")
+
+            subprocess.run(
+                call,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True
+            )
+            logger.info(f"Command '{cmd}' is available.")
+        except subprocess.CalledProcessError:
+            logger.error(f"Command '{cmd}' is not available on the VM.")
+            sys.exit(1)
 
 def qm_exec(vmid, cmd, data_in=None, timeout=60):
+    """Execute command inside VM."""
     output = None
     text = None
     try:
@@ -90,8 +161,9 @@ def qm_exec(vmid, cmd, data_in=None, timeout=60):
     return output
 
 def qm_put(vmid, file_in, file_out, chunk_size):
-    file_size = os.path.getsize(file_in)  # Get the total file size
-    total_chunks = (file_size + chunk_size - 1) // chunk_size  # Calculate the total number of chunks
+    """Put file into VM."""
+    file_size = os.path.getsize(file_in)
+    total_chunks = (file_size + chunk_size - 1) // chunk_size
 
     logger.info(f"File size: {file_size} bytes. Number of chunks: {total_chunks}.")
     if total_chunks > 1:
@@ -117,10 +189,11 @@ def qm_put(vmid, file_in, file_out, chunk_size):
             print_progress_bar(current_chunk, total_chunks, elapsed_time, transferred_bytes)
 
 def qm_fetch(vmid, file_in, file_out, chunk_size):
+    """Fetch file from VM."""
     file_size = int(qm_exec(vmid, ["sh", "-c", f'stat --printf="%s" {file_in}']))
     blocksize = 4096
     count = int(chunk_size/blocksize)
-    total_chunks = (file_size + chunk_size - 1) // chunk_size  # Calculate the total number of chunks
+    total_chunks = (file_size + chunk_size - 1) // chunk_size
 
     logger.info(f"File size: {file_size} bytes. Number of chunks: {total_chunks}.")
     if total_chunks > 1:
@@ -163,6 +236,11 @@ def main():
     args = parser.parse_args()
 
     set_logging_level(args.verbose)
+
+    print("\r  Checking compatibility...", end="\r")
+    check_guest_agent(args.vmid)
+    check_osinfo(args.vmid)
+    check_required_commands(args.vmid)
 
     if args.no_progress:
         global PROGRESS_BAR
