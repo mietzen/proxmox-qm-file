@@ -2,7 +2,10 @@
 
 `qm-file` is a Python script designed to transfer files to and from virtual machines (VMs) managed by Proxmox VE. It uses the `qm guest exec` command to execute file operations inside the VM and supports chunked file transfers for large files.
 
-**WARNING** File transfer is really slow! Only around **90-350 KB/s** depending on the server load.
+## Caveats:
+
+- **File transfer is really slow!** Only around **90-350 KB/s** depending on the server load.
+- **Only Linux and FreeBSD** are supported.
 
 ## Syntax
 ```bash
