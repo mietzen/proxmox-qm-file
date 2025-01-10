@@ -22,7 +22,8 @@ positional arguments:
 options:
   -h, --help     show this help message and exit
   -v, --verbose  Increase verbosity (e.g., -v, -vv, -vvv)
-  --no_progress  Don't show progress
+  --no-progress  Don't show progress
+  --no-checks    Don't run checks
 ```
 
 ## Examples
