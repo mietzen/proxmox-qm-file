@@ -8,7 +8,7 @@
 - **Only Linux and FreeBSD** are supported.
 
 ## Syntax
-```bash
+```
 usage: qm-file [-h] [-v] [--no_progress] vmid {put,fetch} file_in file_out
 
 Put / Fetch file in chunks from / to a VM.
