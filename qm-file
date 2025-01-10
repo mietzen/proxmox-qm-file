@@ -1,0 +1,179 @@
+#!/bin/python3
+
+import sys
+import subprocess
+import os
+import json
+import base64
+import time
+import argparse
+import logging
+
+PROGRESS_BAR = True
+
+# Set up logging
+logger = logging.getLogger("qemu_transfer")
+logging.basicConfig(
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
+def set_logging_level(verbosity):
+    if verbosity == 1:
+        logger.setLevel(logging.WARNING)
+    elif verbosity == 2:
+        logger.setLevel(logging.INFO)
+    elif verbosity >= 3:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.ERROR)
+
+def read_in_chunks(file_path, chunk_size):
+    """Reads a file in chunks of the specified size."""
+    with open(file_path, 'rb') as file:  # Open in binary mode to handle all file types
+        while chunk := file.read(chunk_size):
+            yield chunk
+
+def print_progress_bar(iteration, total, elapsed_time, transferred_bytes, length=30):
+    """Prints a progress bar with transfer rate to the console."""
+    percent = f"{100 * (iteration / float(total)):.1f}"
+    filled_length = int(length * iteration // total)
+    bar = '=' * filled_length + '-' * (length - filled_length)
+    rate = transferred_bytes / (1024 * elapsed_time) if elapsed_time > 0 else 0  # KB/s
+    print(f"\r  Progress: |{bar}| {percent}% Complete | {rate:.2f} KB/s", end="\r")
+    if iteration == total:
+        print()  # Move to a new line on completion
+
+def qm_exec(vmid, cmd, data_in=None, timeout=60):
+    output = None
+    text = None
+    try:
+        call = ["qm", "guest", "exec", vmid]
+        if data_in:
+            text = False
+            call += ["--pass-stdin", "1"]
+        call += ["--timeout", str(timeout), "--"] + cmd
+
+        logger.debug(f"Executing command: {' '.join(call)}")
+
+        if os.getuid() != 0:
+            call = ["sudo"] + call
+
+        process = subprocess.run(
+            call,
+            input=data_in,
+            text=text,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Subprocess error: {e}")
+        sys.exit(1)
+
+    stdout = process.stdout.decode()
+    stderr = process.stderr.decode()
+
+    if not stdout:
+        logger.error(f"Command failed: {stderr}")
+        sys.exit(1)
+
+    stdout_json = json.loads(stdout)
+
+    if stdout_json['exitcode'] != 0 or stdout_json['exited'] != 1:
+        logger.error(f"Non-zero exit code: {stdout}")
+        sys.exit(1)
+
+    if 'out-data' in stdout_json:
+        output = stdout_json['out-data']
+
+    return output
+
+def qm_put(vmid, file_in, file_out, chunk_size):
+    file_size = os.path.getsize(file_in)  # Get the total file size
+    total_chunks = (file_size + chunk_size - 1) // chunk_size  # Calculate the total number of chunks
+
+    logger.info(f"File size: {file_size} bytes. Number of chunks: {total_chunks}.")
+    if total_chunks > 1:
+        logger.warning(f"File will be transferred in {total_chunks} chunks due to its size.")
+
+    operator = '>'
+
+    if PROGRESS_BAR:
+        current_chunk = 0
+        transferred_bytes = 0
+        start_time = time.time()
+        print_progress_bar(current_chunk, total_chunks, 0, transferred_bytes)
+
+    for chunk in read_in_chunks(file_in, chunk_size):
+        logger.debug(f"Transferring chunk of size {len(chunk)} bytes.")
+        qm_exec(vmid, ["sh", "-c", f"cat {operator} {file_out}"], data_in=chunk)
+        operator = '>>'
+
+        if PROGRESS_BAR:
+            current_chunk += 1
+            transferred_bytes += len(chunk)
+            elapsed_time = time.time() - start_time
+            print_progress_bar(current_chunk, total_chunks, elapsed_time, transferred_bytes)
+
+def qm_fetch(vmid, file_in, file_out, chunk_size):
+    file_size = int(qm_exec(vmid, ["sh", "-c", f'stat --printf="%s" {file_in}']))
+    blocksize = 4096
+    count = int(chunk_size/blocksize)
+    total_chunks = (file_size + chunk_size - 1) // chunk_size  # Calculate the total number of chunks
+
+    logger.info(f"File size: {file_size} bytes. Number of chunks: {total_chunks}.")
+    if total_chunks > 1:
+        logger.warning(f"File will be fetched in {total_chunks} chunks due to its size.")
+
+    if PROGRESS_BAR:
+        start_time = time.time()
+        transferred_bytes = 0
+        print_progress_bar(0, total_chunks, 0, transferred_bytes)
+
+    with open(file_out, 'wb') as fid:
+        for current_chunk in range(total_chunks):
+            logger.debug(f"Fetching chunk {current_chunk + 1}/{total_chunks}.")
+            fid.write(base64.standard_b64decode(
+                qm_exec(
+                    vmid,
+                    [
+                        "sh", "-c",
+                        f"dd if={file_in} bs={blocksize} count={count} skip={count * current_chunk} | base64 -w0"
+                    ])))
+            transferred_bytes += chunk_size
+
+            if PROGRESS_BAR:
+                elapsed_time = time.time() - start_time
+                if file_size - transferred_bytes < chunk_size:
+                    print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, file_size)
+                else:
+                    print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, transferred_bytes)
+
+def main():
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description="Put / Fetch file in chunks from / to a VM.")
+    parser.add_argument("vmid", help="VM ID")
+    parser.add_argument("mode", help="Transfer mode", choices=['put', 'fetch'])
+    parser.add_argument("file_in", help="Path of input file")
+    parser.add_argument("file_out", help="Path of output file")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase verbosity (e.g., -v, -vv, -vvv)")
+    parser.add_argument("--no_progress", help="Don't show progress", action="store_true")
+
+    args = parser.parse_args()
+
+    set_logging_level(args.verbose)
+
+    if args.no_progress:
+        global PROGRESS_BAR
+        PROGRESS_BAR = False
+
+    logger.info(f"Starting operation: {args.mode}")
+    if args.mode == 'put':
+        qm_put(args.vmid, args.file_in, args.file_out, (1024 * 1024) - 1)  # 1 MiB -1 Byte is the maximum
+
+    if args.mode == 'fetch':
+        qm_fetch(args.vmid, args.file_in, args.file_out, (1024 * 1024) * 2)  # Sweet spot at 2 MiB
+
+if __name__ == "__main__":
+    main()
