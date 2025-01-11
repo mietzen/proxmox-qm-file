@@ -5,7 +5,7 @@
 ## Caveats:
 
 - **File transfer is really slow!** Only around **90-350 KB/s** depending on the server load.
-- **Only Linux and FreeBSD** are supported.
+- **Only Linux and FreeBSD VMs** are supported.
 
 ## Syntax
 ```
