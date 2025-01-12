@@ -195,14 +195,13 @@ def qm_put(vmid, file_in, file_out, chunk_size):
         logger.debug(f"Transferring chunk of size {len(chunk)} bytes.")
         qm_exec(vmid, ["sh", "-c", f"cat {operator} {file_out}"], data_in=chunk)
         operator = '>>'
-
+        elapsed_time = time.time() - start_time
         if PROGRESS_BAR:
             current_chunk += 1
             transferred_bytes += len(chunk)
-            elapsed_time = time.time() - start_time
             print_progress_bar(current_chunk, total_chunks, elapsed_time, transferred_bytes)
 
-    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size//elapsed_time//1024} KB/s)")
+    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size/elapsed_time/1024} KB/s)")
 
 def qm_fetch(vmid, file_in, file_out, chunk_size):
     """Fetch file from VM."""
@@ -231,15 +230,14 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
                         f"dd if={file_in} bs={blocksize} count={count} skip={count * current_chunk} | base64 -w0"
                     ])))
             transferred_bytes += chunk_size
-
+            elapsed_time = time.time() - start_time
             if PROGRESS_BAR:
-                elapsed_time = time.time() - start_time
                 if file_size - transferred_bytes < chunk_size:
                     print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, file_size)
                 else:
                     print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, transferred_bytes)
 
-    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size//elapsed_time//1024} KB/s)")
+    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size/elapsed_time/1024} KB/s)")
 
 def main():
     parser = argparse.ArgumentParser(description="Put / Fetch file in chunks from / to a VM.")
