@@ -1,13 +1,14 @@
 #!/bin/python3
 
-import sys
-import subprocess
-import os
-import json
-import base64
-import time
 import argparse
+import base64
+import hashlib
+import json
 import logging
+import os
+import subprocess
+import sys
+import time
 
 PROGRESS_BAR = True
 
@@ -95,7 +96,7 @@ def check_osinfo(vmid):
 
 def check_required_commands(vmid):
     """Check if required commands are available on the VM."""
-    required_commands = ["cat", "dd", "stat", "base64"]
+    required_commands = ["cat", "dd", "stat", "base64", "sha256sum"]
     for cmd in required_commands:
         try:
             call = ["qm", "guest", "exec", vmid, "--", "sh", "-c", f"which {cmd}"]
@@ -113,6 +114,19 @@ def check_required_commands(vmid):
         except subprocess.CalledProcessError:
             logger.error(f"Command '{cmd}' is not available on the VM.")
             sys.exit(1)
+
+def verify(vmid, remote_file, local_file):
+    """Check if the transferred files have the same sha256 checksum."""
+    remote_sha256_sum = qm_exec(vmid, ["sh", "-c", f"sha256sum {remote_file}  | cut -d ' ' -f 1"])
+    logger.info(f"Got sha256 checksum from remote file: {remote_sha256_sum}")
+    with open(local_file,"rb") as f:
+        bytes = f.read()
+        local_sha256_sum = hashlib.sha256(bytes).hexdigest();
+    logger.info(f"Got sha256 checksum from local file: {local_sha256_sum}")
+
+    if remote_sha256_sum != local_sha256_sum:
+        logger.error(f"Checksum mismatch, Local: {local_sha256_sum}, Remote: {remote_file}")
+        sys.exit(1)
 
 def qm_exec(vmid, cmd, data_in=None, timeout=60):
     """Execute command inside VM."""
@@ -224,7 +238,6 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
                     print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, transferred_bytes)
 
 def main():
-    # Set up argument parser
     parser = argparse.ArgumentParser(description="Put / Fetch file in chunks from / to a VM.")
     parser.add_argument("vmid", help="VM ID")
     parser.add_argument("mode", help="Transfer mode", choices=['put', 'fetch'])
@@ -233,6 +246,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase verbosity (e.g., -v, -vv, -vvv)")
     parser.add_argument("--no-progress", help="Don't show progress", action="store_true")
     parser.add_argument("--no-checks", help="Don't run checks", action="store_true")
+    parser.add_argument("--verify", help="Verify files using SHA256", action="store_true")
 
     args = parser.parse_args()
 
@@ -251,9 +265,13 @@ def main():
     logger.info(f"Starting operation: {args.mode}")
     if args.mode == 'put':
         qm_put(args.vmid, args.file_in, args.file_out, (1024 * 1024) - 1)  # 1 MiB -1 Byte is the maximum
+        if args.verify:
+            verify(args.vmid, args.file_out, args.file_in)
 
     if args.mode == 'fetch':
         qm_fetch(args.vmid, args.file_in, args.file_out, (1024 * 1024) * 2)  # Sweet spot at 2 MiB
+        if args.verify:
+            verify(args.vmid, args.file_in, args.file_out)
 
 if __name__ == "__main__":
     main()
