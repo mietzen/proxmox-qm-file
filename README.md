@@ -9,7 +9,7 @@
 
 ## Syntax
 ```
-usage: qm-file [-h] [-v] [--no_progress] vmid {put,fetch} file_in file_out
+usage: qm-file [-h] [-v] [--no-progress] [--no-checks] [--verify] vmid {put,fetch} file_in file_out
 
 Put / Fetch file in chunks from / to a VM.
 
@@ -24,6 +24,7 @@ options:
   -v, --verbose  Increase verbosity (e.g., -v, -vv, -vvv)
   --no-progress  Don't show progress
   --no-checks    Don't run checks
+  --verify       Verify files using SHA256
 ```
 
 ## Install
