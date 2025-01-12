@@ -250,7 +250,7 @@ def main():
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Increase verbosity (e.g., -v, -vv, -vvv)")
     parser.add_argument("--no-progress", help="Don't show progress", action="store_true")
     parser.add_argument("--no-checks", help="Don't run checks", action="store_true")
-    parser.add_argument("--verify", help="Verify files using SHA256", action="store_true")
+    parser.add_argument("--no-verify", help="Don't verify files", action="store_true")
 
     args = parser.parse_args()
 
@@ -269,12 +269,12 @@ def main():
     logger.info(f"Starting operation: {args.mode}")
     if args.mode == 'put':
         qm_put(args.vmid, args.file_in, args.file_out, (1024 * 1024) - 1)  # 1 MiB -1 Byte is the maximum
-        if args.verify:
+        if not args.no_verify:
             verify(args.vmid, args.file_out, args.file_in)
 
     if args.mode == 'fetch':
         qm_fetch(args.vmid, args.file_in, args.file_out, (1024 * 1024) * 2)  # Sweet spot at 2 MiB
-        if args.verify:
+        if not args.no_verify:
             verify(args.vmid, args.file_in, args.file_out)
 
 if __name__ == "__main__":

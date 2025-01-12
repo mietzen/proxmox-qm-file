@@ -24,7 +24,7 @@ options:
   -v, --verbose  Increase verbosity (e.g., -v, -vv, -vvv)
   --no-progress  Don't show progress
   --no-checks    Don't run checks
-  --verify       Verify files using SHA256
+  --no-verify    Don't verify files
 ```
 
 ## Install
@@ -44,7 +44,7 @@ sudo rm /usr/sbin/qm-file
 
 ### Uploading a File to a VM
 ```bash
-$ ./qm-file --verify -vv 100 put ./bin.file /tmp/file.bin
+$ ./qm-file -vv 100 put ./bin.file /tmp/file.bin
 2025-01-12 09:12:31 [INFO] Guest agent is installed and reachable.
 2025-01-12 09:12:31 [INFO] OS check passed: name='debian gnu/linux', kernel-version='#1 smp preempt_dynamic debian 6.1.119-1 (2024-11-22)'.
 2025-01-12 09:12:32 [INFO] Command 'cat' is available.
@@ -67,7 +67,7 @@ $ ./qm-file --verify -vv 100 put ./bin.file /tmp/file.bin
 
 ### Downloading a File from a VM
 ```bash
-$ ./qm-file --verify -vv 100 fetch /tmp/file.bin file.bin
+$ ./qm-file -vv 100 fetch /tmp/file.bin file.bin
 2025-01-12 09:11:19 [INFO] Guest agent is installed and reachable.
 2025-01-12 09:11:19 [INFO] OS check passed: name='debian gnu/linux', kernel-version='#1 smp preempt_dynamic debian 6.1.119-1 (2024-11-22)'.
 2025-01-12 09:11:20 [INFO] Command 'cat' is available.
