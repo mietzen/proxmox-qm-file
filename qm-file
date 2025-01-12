@@ -122,10 +122,10 @@ def verify(vmid, remote_file, local_file):
     with open(local_file,"rb") as f:
         bytes = f.read()
         local_sha256_sum = hashlib.sha256(bytes).hexdigest();
-    logger.info(f"Got sha256 checksum from local file: {local_sha256_sum}")
+    logger.info(f"Got sha256 checksum from local file:  {local_sha256_sum}")
 
     if remote_sha256_sum != local_sha256_sum:
-        logger.error(f"Checksum mismatch, Local:  {local_sha256_sum}, Remote: {remote_file}")
+        logger.error(f"Checksum mismatch, Local: {local_sha256_sum}, Remote: {remote_file}")
         sys.exit(1)
 
 def qm_exec(vmid, cmd, data_in=None, timeout=60):
