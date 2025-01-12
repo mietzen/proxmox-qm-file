@@ -185,10 +185,11 @@ def qm_put(vmid, file_in, file_out, chunk_size):
 
     operator = '>'
 
+    start_time = time.time()
+
     if PROGRESS_BAR:
         current_chunk = 0
         transferred_bytes = 0
-        start_time = time.time()
         print_progress_bar(current_chunk, total_chunks, 0, transferred_bytes)
 
     for chunk in read_in_chunks(file_in, chunk_size):
@@ -214,9 +215,10 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
     if total_chunks > 1:
         logger.warning(f"File will be fetched in {total_chunks} chunks due to its size.")
 
+    start_time = time.time()
+    transferred_bytes = 0
+
     if PROGRESS_BAR:
-        start_time = time.time()
-        transferred_bytes = 0
         print_progress_bar(0, total_chunks, 0, transferred_bytes)
 
     with open(file_out, 'wb') as fid:
