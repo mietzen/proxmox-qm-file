@@ -193,7 +193,7 @@ def qm_put(vmid, file_in, file_out, chunk_size):
         print_progress_bar(current_chunk, total_chunks, 0, transferred_bytes)
 
     for chunk in read_in_chunks(file_in, chunk_size):
-        logger.debug(f"Transferring chunk of size {len(chunk)} bytes.")
+        logger.info(f"Transferring chunk of size {len(chunk)} bytes.")
         qm_exec(vmid, ["sh", "-c", f"cat {operator} {file_out}"], data_in=chunk)
         operator = '>>'
         elapsed_time = time.time() - start_time
@@ -223,7 +223,7 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
 
     with open(file_out, 'wb') as fid:
         for current_chunk in range(total_chunks):
-            logger.debug(f"Fetching chunk {current_chunk + 1}/{total_chunks}.")
+            logger.info(f"Fetching chunk {current_chunk + 1}/{total_chunks}.")
             fid.write(base64.standard_b64decode(
                 qm_exec(
                     vmid,
