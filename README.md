@@ -26,6 +26,13 @@ options:
   --no-checks    Don't run checks
 ```
 
+## Install
+
+```bash
+sudo curl -o /usr/sbin/qm-file https://raw.githubusercontent.com/mietzen/proxmox-qm-file/refs/heads/main/qm-file
+sudo chmod +x /usr/sbin/qm-file
+```
+
 ## Examples
 
 ### Uploading a File to a VM
