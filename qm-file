@@ -202,7 +202,7 @@ def qm_put(vmid, file_in, file_out, chunk_size):
             transferred_bytes += len(chunk)
             print_progress_bar(current_chunk, total_chunks, elapsed_time, transferred_bytes)
 
-    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size/elapsed_time/1024} KB/s)")
+    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time:.1f} s ({file_size/elapsed_time/1024:.1f} KB/s)")
 
 def qm_fetch(vmid, file_in, file_out, chunk_size):
     """Fetch file from VM."""
@@ -239,7 +239,7 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
                 else:
                     print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, transferred_bytes)
 
-    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size/elapsed_time/1024} KB/s)")
+    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time:.1f} s ({file_size/elapsed_time/1024:.1f} KB/s)")
 
 def main():
     parser = argparse.ArgumentParser(description="Put / Fetch file in chunks from / to a VM.")
