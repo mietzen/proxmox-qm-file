@@ -9,7 +9,9 @@
 
 ## Syntax
 ```
-usage: qm-file [-h] [-v] [--no-progress] [--no-checks] [--verify] vmid {put,fetch} file_in file_out
+$ ./qm-file -h
+usage: qm-file [-h] [-v] [--no-progress] [--no-checks] [--no-verify]
+               vmid {put,fetch} file_in file_out
 
 Put / Fetch file in chunks from / to a VM.
 
