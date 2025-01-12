@@ -117,7 +117,7 @@ def check_required_commands(vmid):
 
 def verify(vmid, remote_file, local_file):
     """Check if the transferred files have the same sha256 checksum."""
-    remote_sha256_sum = qm_exec(vmid, ["sh", "-c", f"sha256sum {remote_file}  | cut -d ' ' -f 1"])
+    remote_sha256_sum = qm_exec(vmid, ["sh", "-c", f"sha256sum {remote_file}  | cut -d ' ' -f 1"]).strip()
     logger.info(f"Got sha256 checksum from remote file: {remote_sha256_sum}")
     with open(local_file,"rb") as f:
         bytes = f.read()
@@ -125,7 +125,7 @@ def verify(vmid, remote_file, local_file):
     logger.info(f"Got sha256 checksum from local file: {local_sha256_sum}")
 
     if remote_sha256_sum != local_sha256_sum:
-        logger.error(f"Checksum mismatch, Local: {local_sha256_sum}, Remote: {remote_file}")
+        logger.error(f"Checksum mismatch, Local:  {local_sha256_sum}, Remote: {remote_file}")
         sys.exit(1)
 
 def qm_exec(vmid, cmd, data_in=None, timeout=60):

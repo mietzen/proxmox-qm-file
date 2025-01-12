@@ -34,6 +34,12 @@ sudo curl -o /usr/sbin/qm-file https://raw.githubusercontent.com/mietzen/proxmox
 sudo chmod +x /usr/sbin/qm-file
 ```
 
+## Uninstall
+
+```
+sudo rm /usr/sbin/qm-file
+```
+
 ## Examples
 
 ### Uploading a File to a VM
