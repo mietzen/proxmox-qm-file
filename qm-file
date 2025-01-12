@@ -202,6 +202,8 @@ def qm_put(vmid, file_in, file_out, chunk_size):
             elapsed_time = time.time() - start_time
             print_progress_bar(current_chunk, total_chunks, elapsed_time, transferred_bytes)
 
+    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size//elapsed_time//1024} KB/s)")
+
 def qm_fetch(vmid, file_in, file_out, chunk_size):
     """Fetch file from VM."""
     file_size = int(qm_exec(vmid, ["sh", "-c", f'stat --printf="%s" {file_in}']))
@@ -237,6 +239,8 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
                 else:
                     print_progress_bar(current_chunk + 1, total_chunks, elapsed_time, transferred_bytes)
 
+    logger.info(f"File: {file_in} ({file_size} bytes). Transfer completed, in {elapsed_time} s ({file_size//elapsed_time//1024} KB/s)")
+
 def main():
     parser = argparse.ArgumentParser(description="Put / Fetch file in chunks from / to a VM.")
     parser.add_argument("vmid", help="VM ID")
@@ -258,7 +262,7 @@ def main():
         check_osinfo(args.vmid)
         check_required_commands(args.vmid)
 
-    if args.no_progress:
+    if args.no_progress or args.verbose > 1:
         global PROGRESS_BAR
         PROGRESS_BAR = False
 
