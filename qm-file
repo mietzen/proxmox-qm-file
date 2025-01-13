@@ -223,7 +223,10 @@ def qm_fetch(vmid, file_in, file_out, chunk_size):
 
     with open(file_out, 'wb') as fid:
         for current_chunk in range(total_chunks):
-            logger.info(f"Transferring chunk of size {chunk_size} bytes ({current_chunk + 1}/{total_chunks}).")
+            if file_size - transferred_bytes >= chunk_size:
+                logger.info(f"Transferring chunk of size {chunk_size} bytes ({current_chunk + 1}/{total_chunks}).")
+            else:
+                logger.info(f"Transferring chunk of size {file_size - transferred_bytes} bytes ({current_chunk + 1}/{total_chunks}).")
             fid.write(base64.standard_b64decode(
                 qm_exec(
                     vmid,
